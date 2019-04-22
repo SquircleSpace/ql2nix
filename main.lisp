@@ -1,8 +1,8 @@
-(defpackage :ql2nix/main
+(defpackage :ql2nix
   (:use :common-lisp)
   (:import-from :uiop)
   (:export #:main))
-(in-package :ql2nix/main)
+(in-package :ql2nix)
 
 (declaim (optimize (speed 0) (space 0) (safety 3) (debug 3) (compilation-speed 0)))
 
