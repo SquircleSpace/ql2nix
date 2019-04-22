@@ -7,7 +7,13 @@ that builds a Quicklisp bundle that contains the Common Lisp
 dependencies of your project.
 
 * Building
-~ql2nix~ is a valid ASDF system and it is set up to output an
+The preferred way to build ~ql2nix~ is with Nix, of course!  ~ql2nix~
+includes a ~default.nix~ that builds ~ql2nix~.  Just run ~nix-build~!
+#+BEGIN_EXAMPLE
+nix-build
+#+END_EXAMPLE
+
+~ql2nix~ is also a valid ASDF system and it is set up to output an
 executable.  So, all you need to do is get ASDF to perform the
 ~program-op~ on ~"ql2nix"~.  Something like this!
 
