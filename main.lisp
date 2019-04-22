@@ -6,6 +6,29 @@
 
 (declaim (optimize (speed 0) (space 0) (safety 3) (debug 3) (compilation-speed 0)))
 
+(defvar *nixlisp-bundle-contents*
+  (load-time-value
+   (with-open-file (stream (uiop:merge-pathnames* #P"nixlispBundle.nix" *load-truename*))
+     (uiop:slurp-input-stream :string stream))))
+
+(defvar *nixlisp-dist-contents*
+  (load-time-value
+   (with-open-file (stream (uiop:merge-pathnames* #P"nixlispDist.nix" *load-truename*))
+     (uiop:slurp-input-stream :string stream))))
+
+(defvar *mk-nixlisp-bundle-contents*
+  (load-time-value
+   (with-open-file (stream (uiop:merge-pathnames* #P"mkNixlispBundle.nix" *load-truename*))
+     (uiop:slurp-input-stream :string stream))))
+
+(defun produce-nixlisp-lib-files ()
+  (with-open-file (stream #P"nixlispDist.nix" :direction :output :if-exists :supersede)
+    (write-string *nixlisp-dist-contents* stream))
+  (with-open-file (stream #P"nixlispBundle.nix" :direction :output :if-exists :supersede)
+    (write-string *nixlisp-bundle-contents* stream))
+  (with-open-file (stream #P"mkNixlispBundle.nix" :direction :output :if-exists :supersede)
+    (write-string *mk-nixlisp-bundle-contents* stream)))
+
 (defmacro define-wrapper (function-name package-name)
   `(defun ,function-name (object)
      (funcall (find-symbol ,(symbol-name function-name) ,package-name) object)))
@@ -126,17 +149,55 @@
 (defmethod asdf:perform :before (op (system asdf:system))
   (setf (gethash system *touched-systems*) t))
 
+(defvar *help*
+  "Usage: ql2nix --quicklisp-setup <PATH> [options] [--] [systems...]
+
+ql2nix uses QL:QUICKLOAD to load the named systems.  Any Quicklisp
+system that gets touched by ASDF will be captured by ql2nix.  After
+loading all the systems, ql2nix will output a Nix file describing the
+captured Quicklisp systems.  Using the mkNixlispBundle Nix function,
+you can easily obtain a derivation which includes all of the Quicklisp
+packages captured in the closure.  The derivation also includes a
+Common Lisp source file that, when loaded, makes the systems in the
+closure available to ASDF.
+
+Options:
+
+--quicklisp-setup <PATH>
+  Must be specified exactly once.  Pass in the path to Quicklisp's
+  setup.lisp file.  ql2nix will use the given Quicklisp installation
+  when quickloading dependencies.
+
+--project-dir <PATH>
+  Add PATH to ASDF's source registry.  In addition, ql2nix will ignore
+  any systems contained within PATH.  If you pass in the path to your
+  project and then have ql2nix quickload your system then ql2nix will
+  automatically discover all of your project's dependencies!  Nifty!
+
+--nixlisp-lib
+  Write out the supporting nixlisp Nix files required to make use of
+  ql2nix's system closures.  Until ql2nix's mkNixlispBundle function
+  gets integrated into nixpkgs, you will probably want to use this
+  option!
+
+--help
+  Show this text and exit.
+")
+
+(defun help ()
+  (write-string *help* *error-output*))
+
 (defun main (&optional (argv (uiop:raw-command-line-arguments)))
   (pop argv)
-  (let (project-paths)
+  (let (project-paths
+        quicklisp-setup-path
+        output-nixlisp-lib-files)
     (loop :while argv :for arg = (pop argv) :do
       (equal-case arg
         ("--quicklisp-setup"
-         (if (find-package :quicklisp)
-             (error "Quicklisp is already loaded")
-             (progn
-               (load (pop argv))
-               (ensure-quicklisp))))
+         (setf quicklisp-setup-path (pop argv))
+         (unless quicklisp-setup-path
+           (error "--quicklisp-setup requires a path to Quicklisp's setup.lisp file")))
 
         ("--project-dir"
          (let ((project-path (pop argv)))
@@ -146,6 +207,13 @@
            (assert (uiop:absolute-pathname-p project-path))
            (push project-path asdf:*central-registry*)))
 
+        ("--nixlisp-lib"
+         (setf output-nixlisp-lib-files t))
+
+        ("--help"
+         (help)
+         (return-from main))
+
         ("--"
          (return))
         
@@ -153,10 +221,21 @@
          (push arg argv)
          (return))))
 
-    (ensure-quicklisp)
+    (when quicklisp-setup-path
+      (if (find-package :quicklisp)
+          (error "Quicklisp is already loaded")
+          (progn
+            (load quicklisp-setup-path)
+            (ensure-quicklisp))))
+
+    (when output-nixlisp-lib-files
+      (produce-nixlisp-lib-files))
+
+    (unless argv
+      (return-from main))
+
     (let ((system-names argv))
-      (unless system-names
-        (error "Missing required argument: the name of a system to load"))
+      (ensure-quicklisp)
 
       (let ((ql-systems (make-hash-table :test 'eq))
             (ql-releases (make-hash-table :test 'eq)))
