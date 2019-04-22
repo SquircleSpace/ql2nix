@@ -1,0 +1,52 @@
+#+TITLE: Quicklisp To Nix
+#+AUTHOR: Brad Jensen
+
+So you've got a Common Lisp project that you want to build in Nix?
+~ql2nix~ can help!  ~ql2nix~ will help you produce a nix expression
+that builds a Quicklisp bundle that contains the Common Lisp
+dependencies of your project.
+
+* Building
+~ql2nix~ is a valid ASDF system and it is set up to output an
+executable.  So, all you need to do is get ASDF to perform the
+~program-op~ on ~"ql2nix"~.  Something like this!
+
+#+BEGIN_EXAMPLE
+sbcl --eval '(require :asdf)' \
+     --eval '(let ((asdf:*central-registry* (cons (truename ".") asdf:*central-registry*)))
+               (asdf:oos (quote asdf:program-op) "ql2nix"))'
+#+END_EXAMPLE
+
+ASDF will save the executable in the usual output location -- usually
+somewhere in ~$HOME/.cache/common-lisp/~.
+
+* Usage
+#+BEGIN_EXAMPLE
+ql2nix [--quicklisp-setup path/to/quicklisp/setup.lisp] [--project-dir PATH] [--] system...
+#+END_EXAMPLE
+
+~ql2nix~ works by loading the named systems with ~ql:quickload~.  Any
+system that ASDF touches gets marked.  If that system is provided by
+your Quicklisp installation then ~ql2nix~ will include it in the
+closure.
+
+If ~ql2nix~ wasn't built with Quicklisp already loaded then you must
+provide the path to Quicklisp's ~setup.lisp~ via the
+~--quicklisp-setup~ command line argument.
+
+Any paths you specify with ~--project-dir~ will be included in ASDF's
+source registry.  Systems contained within those paths are not
+included in the closure that ~ql2nix~ produces.
+
+~ql2nix~ will output 3 files: ~qlSystems.nix~, ~qlReleases.nix~, and
+~qlDist.nix~.  These 3 files describe the transitive closure of
+Quicklisp systems that were touched while loading the systems
+specified on the command line.  The 3 ~ql*.nix~ files combined with
+the provided ~nixlispBundle.nix~ and ~nixlispDist.nix~ files can be
+used to produce a Nix production that contains the transitive closure
+of systems.  The closure includes a ~bundle.lisp~ file that, when
+loaded, makes the systems contained in the transitive closure
+available to ASDF.
+
+See ~test.nix~ for example usage of ~nixlispBundle.nix~ and
+~nixlispDist.nix~.
