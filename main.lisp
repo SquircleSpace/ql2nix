@@ -50,10 +50,6 @@
                         :output :lines)
     (values hash store-path)))
 
-(defun nix-safe-name (name)
-  ;; TODO
-  name)
-
 (defun path-name (pathname)
   (make-pathname :name (pathname-name pathname) :type (pathname-type pathname)))
 
@@ -75,7 +71,7 @@
         (dolist (system (provided-systems release))
           (when (gethash system ql-systems)
             (setf (gethash (concatenate 'string (system-file-name system) ".asd") allowable-system-files) t)))
-        (format stream "  ~A = {~%" (nix-safe-name (name release)))
+        (format stream "  \"~A\" = {~%" (name release))
         (format stream "    archive = fetchurl {~%")
         (format stream "      url = \"~A\";~%" (archive-url release))
         (format stream "      sha256 = \"~A\";~%" nix-hash)
@@ -99,8 +95,8 @@
     (format stream "{ qlReleases }:~%")
     (format stream "let qlSystems = {~%")
     (dolist (system systems)
-      (format stream "  ~A = {~%" (nix-safe-name (name system)))
-      (format stream "    release = qlReleases.~A;~%" (nix-safe-name (name (release system))))
+      (format stream "  \"~A\" = {~%" (name system))
+      (format stream "    release = qlReleases.\"~A\";~%" (name (release system)))
       (format stream "    name = \"~A\";~%" (name system))
       (format stream "    systemFileName = \"~A\";~%" (system-file-name system))
       (format stream "    requiredSystems = [~%")
@@ -108,7 +104,7 @@
         (unless (or (equal "asdf" required-system)
                     (equal "uiop" required-system))
           ;; ASDF and UIOP will be handled separately
-          (format stream "      qlSystems.~A~%" (nix-safe-name required-system))))
+          (format stream "      qlSystems.\"~A\"~%" required-system)))
       (format stream "    ];~%")
       (format stream "  };~%"))
     (format stream "};~%")
