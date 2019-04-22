@@ -56,3 +56,19 @@ available to ASDF.
 
 See ~test.nix~ for example usage of ~nixlispBundle.nix~ and
 ~nixlispDist.nix~.
+
+There are two ways you can use ~ql2nix~.  You can either have ~ql2nix~
+load your ASDF system and discover required dependencies automatically
+or you can pass in dependencies explicitly.  Either way, you must run
+~ql2nix~ in an environment where it can ~ql:quickload~ the systems
+that are named.  So, if a package depends on a native library then
+that native library must be available in the environment when you run
+~ql2nix~.  For example...
+
+#+BEGIN_EXAMPLE
+nix-shell -p someNativeDependency # if you have any!
+# Automatic dependency discovery
+ql2nix --quicklisp-setup ~/quicklisp/setup.lisp --project-dir path/to/your/source/ your-system-name
+# Explicit dependencies
+ql2nix --quicklisp-setup ~/quicklisp/setup.lisp systems-you depend-on-go here
+#+END_EXAMPLE
