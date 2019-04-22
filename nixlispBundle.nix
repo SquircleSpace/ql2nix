@@ -23,7 +23,7 @@ in mkDerivation rec {
   buildPhase = ''
     mkdir -p quicklisp/tmp
     mkdir -p quicklisp/local-projects
-    mkdir -p quicklisp/dists
+    mkdir -p quicklisp/dists/nixlisp/archives
     mkdir -p quicklisp/quicklisp
 
     cp -r "${quicklisp}/lib/common-lisp/quicklisp/"* quicklisp/
@@ -33,7 +33,7 @@ in mkDerivation rec {
       rm -rdf quicklisp/dists/quicklisp
     fi
 
-    cp -r "${nixlispDist}/" quicklisp/dists/nixlisp
+    ${nixlispDist}/bin/nixlisp-installer quicklisp/dists/nixlisp/
 
     ASDF_OUTPUT_TRANSLATIONS="(:output-translations :ignore-inherited-configuration (t :here))"
     export ASDF_OUTPUT_TRANSLATIONS
