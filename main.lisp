@@ -103,7 +103,7 @@
         ;; don't mention any systems contained within the asd then
         ;; quicklisp (hopefully) won't even notice it.
         (dolist (system (provided-systems release))
-          (when (gethash system ql-systems)
+          (when (gethash (name system) ql-systems)
             (setf (gethash (concatenate 'string (system-file-name system) ".asd") allowable-system-files) t)))
         (indent-format output-stream "\"~A\" = {~%" (name release))
         (with-indent
@@ -154,19 +154,14 @@
     (with-indent
       (indent-format stream "qlReleases =~%")
       (with-indent
-        (produce-ql-releases (hash-table-keys ql-releases) ql-systems :output-stream stream))
+        (produce-ql-releases (hash-table-values ql-releases) ql-systems :output-stream stream))
       (indent-format stream "qlSystems =~%")
-      (let (systems)
-        (loop :for release :being :the :hash-keys :of ql-releases :do
-          (loop :for system :in (provided-systems release) :do
-            (when (gethash system ql-systems)
-              (push system systems))))
-        (with-indent
-          (produce-ql-systems systems :output-stream stream))))
+      (with-indent
+        (produce-ql-systems (hash-table-values ql-systems) :output-stream stream)))
     (indent-format stream "in { inherit qlSystems qlReleases; }~%")))
 
-(defun hash-table-keys (hash-table)
-  (loop :for key :being :the :hash-keys :of hash-table :collect key))
+(defun hash-table-values (hash-table)
+  (loop :for value :being :the :hash-values :of hash-table :collect value))
 
 (defvar *touched-systems* (make-hash-table :test 'eq))
 
@@ -261,8 +256,8 @@ Options:
     (let ((system-names argv))
       (ensure-quicklisp)
 
-      (let ((ql-systems (make-hash-table :test 'eq))
-            (ql-releases (make-hash-table :test 'eq)))
+      (let ((ql-systems (make-hash-table :test 'equal))
+            (ql-releases (make-hash-table :test 'equal)))
         (dolist (system-name system-names)
           (quickload system-name))
 
@@ -276,7 +271,7 @@ Options:
                                   (progn
                                     (warn "Couldn't find quicklisp system for ASDF system: ~A" system-name)
                                     (return-from continue)))))
-              (setf (gethash ql-system ql-systems) t)
-              (setf (gethash (release ql-system) ql-releases) t))))
+              (setf (gethash (name ql-system) ql-systems) ql-system)
+              (setf (gethash (name (release ql-system)) ql-releases) (release ql-system)))))
 
         (produce-ql-dist ql-releases ql-systems)))))
