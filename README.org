@@ -44,15 +44,14 @@ Any paths you specify with ~--project-dir~ will be included in ASDF's
 source registry.  Systems contained within those paths are not
 included in the closure that ~ql2nix~ produces.
 
-~ql2nix~ will output 3 files: ~qlSystems.nix~, ~qlReleases.nix~, and
-~qlDist.nix~.  These 3 files describe the transitive closure of
-Quicklisp systems that were touched while loading the systems
-specified on the command line.  The 3 ~ql*.nix~ files combined with
-the provided ~nixlispBundle.nix~ and ~nixlispDist.nix~ files can be
-used to produce a Nix production that contains the transitive closure
-of systems.  The closure includes a ~bundle.lisp~ file that, when
-loaded, makes the systems contained in the transitive closure
-available to ASDF.
+~ql2nix~ will output a file named ~qlDist.nix~.  This file describes
+the transitive closure of Quicklisp systems that were touched while
+loading the systems specified on the command line.  ~qlDist.nix~ can
+be combined with the provided ~nixlispBundle.nix~ and
+~nixlispDist.nix~ files to produce a Nix production that contains the
+transitive closure of systems.  The closure includes a ~bundle.lisp~
+file that, when loaded, makes the systems contained in the transitive
+closure available to ASDF.
 
 See ~test.nix~ for example usage of ~nixlispBundle.nix~ and
 ~nixlispDist.nix~.
