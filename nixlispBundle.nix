@@ -43,11 +43,11 @@ in mkDerivation rec {
     "${clwrapper}/bin/common-lisp.sh" "$NIX_LISP_LOAD_FILE" "${bundler}"
   '';
   installPhase = ''
-    mkdir -p "$out/lib/common-lisp/nixlispBundle"
-    tar -c -C bundle/ . | tar -x -C "$out/lib/common-lisp/nixlispBundle/"
+    mkdir -p "$out"
+    tar -c -C bundle/ . | tar -x -C "$out"
     # This file contains nondeterministic output (e.g. date and info
     # about host).  Until we have some reason to include it (or a
     # replacement), its better to leave it out.
-    rm "$out/lib/common-lisp/nixlispBundle/bundle-info.sexp"
+    rm "$out/bundle-info.sexp"
   '';
 }
