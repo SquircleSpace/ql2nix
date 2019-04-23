@@ -76,9 +76,20 @@
 (defun path-name (pathname)
   (make-pathname :name (pathname-name pathname) :type (pathname-type pathname)))
 
-(defun produce-ql-releases (releases ql-systems)
-  (with-open-file (stream #P"qlReleases.nix" :direction :output :if-exists :supersede)
-    (format stream "{ fetchurl }:~%{~%")
+(defvar *indent-level* 0)
+
+(defmacro with-indent (&body body)
+  `(let ((*indent-level* (1+ *indent-level*)))
+     ,@body))
+
+(defun indent-format (output format-specifier &rest args)
+  (dotimes (count *indent-level*)
+    (format output "  "))
+  (apply 'format output format-specifier args))
+
+(defun produce-ql-releases (releases ql-systems &key (output-stream *standard-output*))
+  (indent-format output-stream "{~%")
+  (with-indent
     (dolist (release releases)
       (let* ((path (ensure-local-archive-file release))
              (nix-hash (nix-prefetch path))
@@ -94,52 +105,65 @@
         (dolist (system (provided-systems release))
           (when (gethash system ql-systems)
             (setf (gethash (concatenate 'string (system-file-name system) ".asd") allowable-system-files) t)))
-        (format stream "  \"~A\" = {~%" (name release))
-        (format stream "    archive = fetchurl {~%")
-        (format stream "      url = \"~A\";~%" (archive-url release))
-        (format stream "      sha256 = \"~A\";~%" nix-hash)
-        (format stream "    };~%")
-        (format stream "    name = \"~A\";~%" (name release))
-        (format stream "    archiveName = \"~A\";~%" (path-name path))
-        (format stream "    archiveSize = ~A;~%" (archive-size release))
-        (format stream "    archiveMD5 = \"~A\";~%" (archive-md5 release))
-        (format stream "    archiveContentSHA1 = \"~A\";~%" (archive-content-sha1 release))
-        (format stream "    prefix = \"~A\";~%" (prefix release))
-        (format stream "    systemFiles = [~%")
-        (dolist (file-name (system-files release))
-          (when (gethash file-name allowable-system-files)
-            (format stream "      \"~A\"~%" file-name)))
-        (format stream "    ];~%")
-        (format stream "  };~%")))
-    (format stream "}~%")))
+        (indent-format output-stream "\"~A\" = {~%" (name release))
+        (with-indent
+          (indent-format output-stream "archive = fetchurl {~%")
+          (with-indent
+            (indent-format output-stream "url = \"~A\";~%" (archive-url release))
+            (indent-format output-stream "sha256 = \"~A\";~%" nix-hash))
+          (indent-format output-stream "};~%")
+          (indent-format output-stream "name = \"~A\";~%" (name release))
+          (indent-format output-stream "archiveName = \"~A\";~%" (path-name path))
+          (indent-format output-stream "archiveSize = ~A;~%" (archive-size release))
+          (indent-format output-stream "archiveMD5 = \"~A\";~%" (archive-md5 release))
+          (indent-format output-stream "archiveContentSHA1 = \"~A\";~%" (archive-content-sha1 release))
+          (indent-format output-stream "prefix = \"~A\";~%" (prefix release))
+          (indent-format output-stream "systemFiles = [~%")
+          (with-indent
+            (dolist (file-name (system-files release))
+              (when (gethash file-name allowable-system-files)
+                (indent-format output-stream "\"~A\"~%" file-name))))
+          (indent-format output-stream "];~%"))
+        (indent-format output-stream "};~%"))))
+  (indent-format output-stream "};~%"))
 
-(defun produce-ql-systems (systems)
-  (with-open-file (stream #P"qlSystems.nix" :direction :output :if-exists :supersede)
-    (format stream "{ qlReleases }:~%")
-    (format stream "let qlSystems = {~%")
+(defun produce-ql-systems (systems &key (output-stream *standard-output*))
+  (indent-format output-stream "{~%")
+  (with-indent
     (dolist (system systems)
-      (format stream "  \"~A\" = {~%" (name system))
-      (format stream "    release = qlReleases.\"~A\";~%" (name (release system)))
-      (format stream "    name = \"~A\";~%" (name system))
-      (format stream "    systemFileName = \"~A\";~%" (system-file-name system))
-      (format stream "    requiredSystems = [~%")
-      (dolist (required-system (required-systems system))
-        (unless (or (equal "asdf" required-system)
-                    (equal "uiop" required-system))
-          ;; ASDF and UIOP will be handled separately
-          (format stream "      qlSystems.\"~A\"~%" required-system)))
-      (format stream "    ];~%")
-      (format stream "  };~%"))
-    (format stream "};~%")
-    (format stream "in qlSystems~%")))
+      (indent-format output-stream "\"~A\" = {~%" (name system))
+      (with-indent
+        (indent-format output-stream "release = qlReleases.\"~A\";~%" (name (release system)))
+        (indent-format output-stream "name = \"~A\";~%" (name system))
+        (indent-format output-stream "systemFileName = \"~A\";~%" (system-file-name system))
+        (indent-format output-stream "requiredSystems = [~%")
+        (with-indent
+          (dolist (required-system (required-systems system))
+            (unless (or (equal "asdf" required-system)
+                        (equal "uiop" required-system))
+              ;; ASDF and UIOP will be handled separately
+              (indent-format output-stream "qlSystems.\"~A\"~%" required-system))))
+        (indent-format output-stream "];~%"))
+      (indent-format output-stream "};~%")))
+  (indent-format output-stream "};~%"))
 
-(defun produce-ql-dist ()
+(defun produce-ql-dist (ql-releases ql-systems)
   (with-open-file (stream #P"qlDist.nix" :direction :output :if-exists :supersede)
-    (format stream "{ fetchurl }:~%")
-    (format stream "let~%")
-    (format stream "  qlReleases = import ./qlReleases.nix { inherit fetchurl; };~%")
-    (format stream "  qlSystems = import ./qlSystems.nix { inherit qlReleases; };~%")
-    (format stream "in { inherit qlSystems qlReleases; }~%")))
+    (indent-format stream "{ fetchurl }:~%")
+    (indent-format stream "let~%")
+    (with-indent
+      (indent-format stream "qlReleases =~%")
+      (with-indent
+        (produce-ql-releases (hash-table-keys ql-releases) ql-systems :output-stream stream))
+      (indent-format stream "qlSystems =~%")
+      (let (systems)
+        (loop :for release :being :the :hash-keys :of ql-releases :do
+          (loop :for system :in (provided-systems release) :do
+            (when (gethash system ql-systems)
+              (push system systems))))
+        (with-indent
+          (produce-ql-systems systems :output-stream stream))))
+    (indent-format stream "in { inherit qlSystems qlReleases; }~%")))
 
 (defun hash-table-keys (hash-table)
   (loop :for key :being :the :hash-keys :of hash-table :collect key))
@@ -255,13 +279,4 @@ Options:
               (setf (gethash ql-system ql-systems) t)
               (setf (gethash (release ql-system) ql-releases) t))))
 
-        (produce-ql-releases (hash-table-keys ql-releases) ql-systems)
-
-        (let (systems)
-          (loop :for release :being :the :hash-keys :of ql-releases :do
-            (loop :for system :in (provided-systems release) :do
-              (when (gethash system ql-systems)
-                (push system systems))))
-          (produce-ql-systems systems))
-
-        (produce-ql-dist)))))
+        (produce-ql-dist ql-releases ql-systems)))))
