@@ -193,6 +193,24 @@ Options:
   project and then have ql2nix quickload your system then ql2nix will
   automatically discover all of your project's dependencies!  Nifty!
 
+--load <PATH>
+  Load the file at the given path.  If this file uses Quicklisp (or
+  ASDF) to load a system that Quicklisp provides then the loaded
+  system will be included in the closure.  You can also use this
+  option to trigger side effects.  For example, you can add something
+  to *FEATURES* or modify state that will impact how the systems are
+  loaded.
+
+--eval <EXPR>
+  Evaluate the given Common Lisp form.  Like the --load option, this
+  option allows you to modify state or load systems in specialized
+  ways.
+
+--system-file
+  Open the given text file and treat every line of the file as a
+  system to quickload.  This option gives you a way to avoid naming a
+  lot of systems on the command line.
+
 --nixlisp-lib
   Write out the supporting nixlisp Nix files required to make use of
   ql2nix's system closures.  Until ql2nix's mkNixlispBundle function
@@ -210,7 +228,9 @@ Options:
   (pop argv)
   (let (project-paths
         quicklisp-setup-path
-        output-nixlisp-lib-files)
+        output-nixlisp-lib-files
+        eval-forms
+        system-file-paths)
     (loop :while argv :for arg = (pop argv) :do
       (equal-case arg
         ("--quicklisp-setup"
@@ -228,6 +248,24 @@ Options:
 
         ("--nixlisp-lib"
          (setf output-nixlisp-lib-files t))
+
+        ("--load"
+         (let ((path (pop argv)))
+           (unless path
+             (error "Missing required argument: path to load"))
+           (push `(load ,path) eval-forms)))
+
+        ("--eval"
+         (let ((form-string (pop argv)))
+           (unless form-string
+             (error "Missing required argument: form to eval"))
+           (push (read (make-string-input-stream form-string)) eval-forms)))
+
+        ("--system-file"
+         (let ((path (pop argv)))
+           (unless path
+             (error "Missing required argument: path to system file"))
+           (push path system-file-paths)))
 
         ("--help"
          (help)
@@ -250,10 +288,18 @@ Options:
     (when output-nixlisp-lib-files
       (produce-nixlisp-lib-files))
 
-    (unless argv
-      (return-from main))
+    (dolist (form (nreverse eval-forms))
+      (eval form))
 
     (let ((system-names argv))
+      (dolist (system-file-path system-file-paths)
+        (with-open-file (stream system-file-path)
+          (loop :for line = (readline stream nil :eof) :while line :do
+            (push line system-names))))
+
+      (unless system-names
+        (return-from main))
+
       (ensure-quicklisp)
 
       (let ((ql-systems (make-hash-table :test 'equal))
