@@ -37,8 +37,11 @@ in mkDerivation rec {
 
     ASDF_OUTPUT_TRANSLATIONS="(:output-translations :ignore-inherited-configuration (t :here))"
     export ASDF_OUTPUT_TRANSLATIONS
+
+    # Sourcing this file with NIX_LISP_SKIP_CODE=1 always returns
+    # non-zero.  Since we're building in a set -e environment we need to
+    # cause that non-zero return value to become zero.
     NIX_LISP_SKIP_CODE=1 source "${clwrapper}/bin/common-lisp.sh" || true
-    echo "${clwrapper}/bin/common-lisp.sh" "$NIX_LISP_LOAD_FILE" "${bundler}" > command.txt
     mkdir -p bundle
     "${clwrapper}/bin/common-lisp.sh" "$NIX_LISP_LOAD_FILE" "${bundler}"
   '';
