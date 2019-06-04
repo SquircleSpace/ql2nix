@@ -88,6 +88,7 @@
   (apply 'format output format-specifier args))
 
 (defun produce-ql-releases (releases ql-systems &key (output-stream *standard-output*))
+  (setf releases (sort (copy-list releases) 'string< :key 'name))
   (indent-format output-stream "{~%")
   (with-indent
     (dolist (release releases)
@@ -128,6 +129,7 @@
   (indent-format output-stream "};~%"))
 
 (defun produce-ql-systems (systems &key (output-stream *standard-output*))
+  (setf systems (sort (copy-list systems) 'string< :key 'name))
   (indent-format output-stream "{~%")
   (with-indent
     (dolist (system systems)
