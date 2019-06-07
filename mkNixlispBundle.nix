@@ -1,4 +1,4 @@
-{ writeTextFile, lib, stdenv, lispPackages, ... }:
+{ writeTextFile, fetchurl, lib, stdenv, lispPackages, ... }:
 qlDist:
 let
   concatMapStrings = lib.concatMapStrings;
@@ -6,7 +6,8 @@ let
   quicklisp = lispPackages.quicklisp;
   clwrapper = lispPackages.clwrapper;
   nixlispDist = import ./nixlispDist.nix {
-    inherit writeTextFile concatMapStrings mkDerivation qlDist;
+    inherit writeTextFile concatMapStrings mkDerivation;
+    qlDist = qlDist { inherit fetchurl; };
   };
   nixlispBundle = import ./nixlispBundle.nix {
     inherit nixlispDist quicklisp clwrapper writeTextFile mkDerivation;
