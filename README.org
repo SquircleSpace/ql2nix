@@ -44,18 +44,6 @@ Any paths you specify with ~--project-dir~ will be included in ASDF's
 source registry.  Systems contained within those paths are not
 included in the closure that ~ql2nix~ produces.
 
-~ql2nix~ will output a file named ~qlDist.nix~.  This file describes
-the transitive closure of Quicklisp systems that were touched while
-loading the systems specified on the command line.  ~qlDist.nix~ can
-be combined with the provided ~nixlispBundle.nix~ and
-~nixlispDist.nix~ files to produce a Nix production that contains the
-transitive closure of systems.  The closure includes a ~bundle.lisp~
-file that, when loaded, makes the systems contained in the transitive
-closure available to ASDF.
-
-See ~test.nix~ for example usage of ~nixlispBundle.nix~ and
-~nixlispDist.nix~.
-
 There are two ways you can use ~ql2nix~.  You can either have ~ql2nix~
 load your ASDF system and discover required dependencies automatically
 or you can pass in dependencies explicitly.  Either way, you must run
@@ -71,3 +59,41 @@ ql2nix --quicklisp-setup ~/quicklisp/setup.lisp --project-dir path/to/your/sourc
 # Explicit dependencies
 ql2nix --quicklisp-setup ~/quicklisp/setup.lisp systems-you depend-on-go here
 #+END_EXAMPLE
+
+Either way, ~ql2nix~ will output a file named ~qlDist.nix~.  This file
+describes the transitive closure of Quicklisp systems that were
+touched while loading the systems specified on the command line.
+~qlDist.nix~ can be combined with the provided ~mkNixlispBundle.nix~
+to produce a Nix derivation that contains the transitive closure of
+systems described by ~qlDist.nix~.
+
+If you're already using Nixpkgs's ~clwrapper~, then using
+~mkNixlispBundle~ is trivial.  Simply include the derivation it
+returns in your ~buildInputs~.  ~clwrapper~ will ensure that all of
+the closure's systems are included in ASDF's source registry.  For example,
+
+#+BEGIN_EXAMPLE
+{ pkgs ? import <nixpkgs> {} }:
+let
+  # Until Nixpkgs adopts mkNixlispBundle, you'll have to embed it in
+  # your project.  Details are below.
+  mkNixlispBundle = import ./nixlisp/mkNixlispBundle.nix pkgs;
+  nixlispBundle = mkNixlispBundle (import ./nixlisp/qlDist.nix);
+in
+pkgs.stdenv.mkDerivation rec {
+  name = "example";
+  buildInputs = [ nixlispBundle ];
+  # ...
+}
+#+END_EXAMPLE
+
+If you're not using ~clwrapper~, then you'll need to ~LOAD~ the file
+at ~lib/common-lisp/bundle/bundle.lisp~.  This file will configure
+ASDF so that the closure's systems are included in ASDF's source
+registry.
+
+As mentioned above, you need to use ~mkNixlispBundle~ to leverage the
+~qlDist.nix~ file produced by ~ql2nix~.  Until Nixpkgs includes
+~mkNixlispBundle~, you'll need to embed it within your project.
+~ql2nix~ will helpfully write out the supporting Nix expressions
+alongside ~qlDist.nix~ if you pass in the ~--nixlisp-lib~ flag.
