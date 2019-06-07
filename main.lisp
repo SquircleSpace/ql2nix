@@ -172,6 +172,7 @@
 
 (defun produce-ql-dist (ql-releases ql-systems)
   (with-open-file (stream #P"qlDist.nix" :direction :output :if-exists :supersede)
+    (indent-format stream "# This file is machine generated.  Do not edit it!~%")
     (indent-format stream "{ fetchurl }:~%")
     (indent-format stream "let~%")
     (with-indent
