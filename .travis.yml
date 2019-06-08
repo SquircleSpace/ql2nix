@@ -1,0 +1,9 @@
+language: nix
+os:
+  - linux
+
+script:
+  - nix-build default.nix && ./result/bin/ql2nix --help
+
+install:
+  - true
