@@ -3,7 +3,7 @@ os:
   - linux
 
 script:
-  - nix-build default.nix && ./result/bin/ql2nix --help
+  - nix-build default.nix && nix-shell --command ./ci/test test.nix
 
 install:
   - true
