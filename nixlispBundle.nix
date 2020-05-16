@@ -92,5 +92,26 @@ in mkDerivation rec {
     fi
     EOF
     chmod +x "$out/lib/common-lisp-settings/bundle-path-config.sh"
+
+    # Load all systems in the bundle while they are still on
+    # read-write storage, before they are moved into the nix store. This
+    # permits systems to generate data and cache it in their system
+    # directories. This is required by CL-UNICODE, for example, which
+    # will error if loaded for the first time from a read-only store
+    # directory.
+
+    cd $out/lib/common-lisp/bundle/
+    common-lisp.sh <<EOF
+      (format t "~&Loading systems in bundle to allow initialization..~%")
+      (setf *debugger-hook* (lambda (&rest args) (declare (ignore args)) (sb-debug:print-backtrace) (uiop:quit 1)))
+
+      (load "bundle.lisp")
+
+      (loop with system-index.txt = (open "system-index.txt")
+            for /some/system.asd = (read-line system-index.txt nil)
+            while /some/system.asd
+            do (asdf:load-system (pathname-name /some/system.asd)))
+      (uiop:quit 0)
+    EOF
   '';
 }
