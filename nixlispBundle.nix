@@ -108,9 +108,9 @@ in mkDerivation rec {
       (load "bundle.lisp")
 
       (loop with system-index.txt = (open "system-index.txt")
-            for /some/system.asd = (read-line system-index.txt nil)
-            while /some/system.asd
-            do (asdf:load-system (pathname-name /some/system.asd)))
+            for system-path = (read-line system-index.txt nil)
+            while system-path
+            do (asdf:load-system (pathname-name system-path)))
       (uiop:quit 0)
     EOF
   '';
