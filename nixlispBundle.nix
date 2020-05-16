@@ -85,7 +85,7 @@ in mkDerivation rec {
     outhash="''${outhash##*/}"
     outhash="''${outhash%%-*}"
     cat > "$out/lib/common-lisp-settings/bundle-path-config.sh" <<EOF
-    if [ -z "\''${_''${outhash}_NIX_LISP_PATH_CONFIG}" ]; then
+    if [ -z "\''${_''${outhash}_NIX_LISP_PATH_CONFIG+x}" ]; then
     export _''${outhash}_NIX_LISP_PATH_CONFIG=1
     export NIX_LISP_ASDF_PATHS="$NIX_LISP_ASDF_PATHS
     $out/lib/common-lisp/bundle"
