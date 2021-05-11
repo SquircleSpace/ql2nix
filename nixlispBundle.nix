@@ -32,7 +32,7 @@ let
                      (print-backtrace (when uiop-package (find-symbol "PRINT-BACKTRACE" uiop-package))))
                 (if print-backtrace
                     (funcall print-backtrace)
-                    (format t "Early fatal error.  No backtrace.  Good luck!~%)))
+                    (format t "Early fatal error.  No backtrace.  Good luck!~%")))
               (uiop:quit 1)))
 
       (eval-when (:compile-toplevel :load-toplevel :execute)
