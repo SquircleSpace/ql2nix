@@ -78,9 +78,11 @@ in mkDerivation rec {
 
     mkdir -p "\$1"/archives
     cp "$out/etc/nixlisp/"*.txt "\$1/"
-    for archive in "$out/etc/nixlisp/archives/"*; do
-      cp "\$archive" "\$1"/archives/
-    done
+    if [ -z "$(find "$out/etc/nixlisp/archives/" -maxdepth 0 -empty)" ]; then
+      for archive in "$out/etc/nixlisp/archives/"*; do
+        cp "\$archive" "\$1"/archives/
+      done
+    fi
     EOF
     chmod +x "$out/bin/nixlisp-installer"
     '';

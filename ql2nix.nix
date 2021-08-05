@@ -19,20 +19,36 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-{ writeTextFile, fetchurl, lib, stdenv, lispPackages, ... }:
-qlDist:
+{ pkgs ? import <nixpkgs> {} }:
 let
-  concatMapStrings = lib.concatMapStrings;
-  mkDerivation = stdenv.mkDerivation;
-  quicklisp = lispPackages.quicklisp;
-  clwrapper = lispPackages.clwrapper;
-  nixlispDist = import ./nixlispDist.nix {
-    inherit writeTextFile concatMapStrings mkDerivation;
-    qlDist = if builtins.pathExists qlDist
-             then (import qlDist) { inherit fetchurl; }
-             else { qlReleases = {}; qlSystems = {}; };
+  build = pkgs.writeTextFile {
+    name = "ql2nix-build.lisp";
+    text = ''
+      (require '#:asdf)
+      (let* ((asdf:*central-registry* (cons (truename ".") asdf:*central-registry*))
+             (system (asdf:find-system '#:ql2nix))
+             (uiop:*image-dump-hook* (cons (lambda () (asdf:clear-system system)) uiop:*image-dump-hook*)))
+        (asdf:oos 'asdf:program-op system))
+    '';
   };
-  nixlispBundle = import ./nixlispBundle.nix {
-    inherit nixlispDist quicklisp clwrapper writeTextFile mkDerivation;
-  };
-in nixlispBundle
+  clwrapper = pkgs.lispPackages.clwrapper;
+in
+pkgs.stdenv.mkDerivation rec {
+  name = "ql2nix-${version}";
+  version = "1.0.0";
+  src = ./.;
+  buildInputs = [
+    clwrapper
+  ];
+  buildPhase = ''
+    ASDF_OUTPUT_TRANSLATIONS="(:output-translations :ignore-inherited-configuration (t \"$(pwd)\"))"
+    export ASDF_OUTPUT_TRANSLATIONS
+    NIX_LISP_SKIP_CODE=1 source "${clwrapper}/bin/common-lisp.sh" || true
+    "${clwrapper}/bin/common-lisp.sh" "$NIX_LISP_LOAD_FILE" "${build}"
+  '';
+  installPhase = ''
+    mkdir -p "$out/bin"
+    cp ql2nix "$out/bin"
+  '';
+  dontStrip = true;
+}
