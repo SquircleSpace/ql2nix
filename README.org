@@ -72,20 +72,25 @@ If you're already using Nixpkgs's ~clwrapper~, then using
 returns in your ~buildInputs~.  ~clwrapper~ will ensure that all of
 the closure's systems are included in ASDF's source registry.  For example,
 
-#+BEGIN_EXAMPLE
+#+BEGIN_SRC nix
 { pkgs ? import <nixpkgs> {} }:
+
+with (import (fetchFromGitHub {
+    owner = "SquircleSpace"
+    repo = "ql2nix";
+    rev = "...";
+    sha256 = "...";
+}) { inherit pkgs; });
+
 let
-  # Until Nixpkgs adopts mkNixlispBundle, you'll have to embed it in
-  # your project.  Details are below.
-  mkNixlispBundle = import ./nixlisp/mkNixlispBundle.nix pkgs;
-  nixlispBundle = mkNixlispBundle (import ./nixlisp/qlDist.nix);
+  nixlispBundle = mkNixlispBundle ./qlDist.nix;
 in
 pkgs.stdenv.mkDerivation rec {
   name = "example";
-  buildInputs = [ nixlispBundle ];
+  buildInputs = [ ql2nix nixlispBundle ];
   # ...
 }
-#+END_EXAMPLE
+#+END_SRC
 
 If you're not using ~clwrapper~, then you'll need to ~LOAD~ the file
 at ~lib/common-lisp/bundle/bundle.lisp~.  This file will configure
