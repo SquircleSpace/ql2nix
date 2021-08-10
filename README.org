@@ -74,15 +74,20 @@ the closure's systems are included in ASDF's source registry.  For example,
 
 #+BEGIN_EXAMPLE
 { pkgs ? import <nixpkgs> {} }:
+
+with (import (fetchFromGitHub {
+  owner = "SquircleSpace"
+  repo = "ql2nix";
+  rev = "...";
+  sha256 = "...";
+}) { inherit pkgs; });
+
 let
-  # Until Nixpkgs adopts mkNixlispBundle, you'll have to embed it in
-  # your project.  Details are below.
-  mkNixlispBundle = import ./nixlisp/mkNixlispBundle.nix pkgs;
-  nixlispBundle = mkNixlispBundle (import ./nixlisp/qlDist.nix);
+  nixlispBundle = mkNixlispBundle ./qlDist.nix;
 in
 pkgs.stdenv.mkDerivation rec {
   name = "example";
-  buildInputs = [ nixlispBundle ];
+  buildInputs = [ ql2nix nixlispBundle ];
   # ...
 }
 #+END_EXAMPLE

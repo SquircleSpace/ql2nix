@@ -28,7 +28,9 @@ let
   clwrapper = lispPackages.clwrapper;
   nixlispDist = import ./nixlispDist.nix {
     inherit writeTextFile concatMapStrings mkDerivation;
-    qlDist = qlDist { inherit fetchurl; };
+    qlDist = if builtins.pathExists qlDist
+             then (import qlDist) { inherit fetchurl; }
+             else { qlReleases = {}; qlSystems = {}; };
   };
   nixlispBundle = import ./nixlispBundle.nix {
     inherit nixlispDist quicklisp clwrapper writeTextFile mkDerivation;
