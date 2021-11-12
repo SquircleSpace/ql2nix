@@ -19,9 +19,11 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-{ pkgs ? import <nixpkgs> {} }:
+{ pkgs ? import <nixpkgs> {} }: pkgs.callPackage (
+{ lib, stdenv, makeWrapper, writeTextFile, clwrapper, lispName ? null }:
 let
-  build = pkgs.writeTextFile {
+  lispName' = if lispName == null then clwrapper.lisp.pname else lispName;
+  build = writeTextFile {
     name = "ql2nix-build.lisp";
     text = ''
       (require '#:asdf)
@@ -31,24 +33,35 @@ let
         (asdf:oos 'asdf:program-op system))
     '';
   };
-  clwrapper = pkgs.lispPackages.clwrapper;
 in
-pkgs.stdenv.mkDerivation rec {
-  name = "ql2nix-${version}";
+stdenv.mkDerivation {
+  pname = "ql2nix";
   version = "1.0.0";
   src = ./.;
+  nativeBuildInputs = [
+    makeWrapper
+  ];
   buildInputs = [
     clwrapper
   ];
   buildPhase = ''
+    runHook preBuild
     ASDF_OUTPUT_TRANSLATIONS="(:output-translations :ignore-inherited-configuration (t \"$(pwd)\"))"
     export ASDF_OUTPUT_TRANSLATIONS
     NIX_LISP_SKIP_CODE=1 source "${clwrapper}/bin/common-lisp.sh" || true
     "${clwrapper}/bin/common-lisp.sh" "$NIX_LISP_LOAD_FILE" "${build}"
+    runHook postBuild
   '';
   installPhase = ''
+    runHook preInstall
     mkdir -p "$out/bin"
     cp ql2nix "$out/bin"
+    runHook postInstall
+  '';
+  preFixup = lib.optionalString (lispName' == "sbcl") ''
+    wrapProgram "$out/bin/ql2nix" \
+      --set SBCL_HOME ${lib.escapeShellArg "${clwrapper.lisp}/lib/sbcl"}
   '';
   dontStrip = true;
 }
+) { inherit (pkgs.lispPackages) clwrapper; }
